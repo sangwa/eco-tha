@@ -66,7 +66,7 @@ class TestCertVerification(TestCase):
     def getService(self):
         return cert_checker.Service('test', 8080, ip_network('10.0.0.0/24'), [])
 
-    @patch('cert_checker.SlackNotifier', auto_spec=True)
+    @patch('cert_checker.SlackNotifier', autospec=True)
     def test_freshness(self, notifier_mock):
         config = self.app.config
 
@@ -97,7 +97,7 @@ class TestCertVerification(TestCase):
         notifier_mock.error.assert_not_called()
         notifier_mock.critical.assert_not_called()
 
-    @patch('cert_checker.SlackNotifier', auto_spec=True)
+    @patch('cert_checker.SlackNotifier', autospec=True)
     def test_expiration(self, notifier_mock):
         config = self.app.config
 
@@ -128,7 +128,7 @@ class TestCertVerification(TestCase):
         notifier_mock.error.assert_called_once_with(msg)
         notifier_mock.critical.assert_not_called()
 
-    @patch('cert_checker.SlackNotifier', auto_spec=True)
+    @patch('cert_checker.SlackNotifier', autospec=True)
     def test_expired(self, notifier_mock):
         config = self.app.config
 
