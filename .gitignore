@@ -6,3 +6,6 @@
 ._*
 # MacOS Desktop Services Store
 .DS_Store
+
+# Python object files
+**.py[co]
