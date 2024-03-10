@@ -76,6 +76,8 @@ If the script is run as a Kubernetes (Cron)Job or some other containerized workl
 
 Finally, if the script is executed as a cron job on an EC2 instance, error output from the script can be routed via the local mail subsystem to a public email list (e.g. a Google Group) that is monitored by responsible persons, or optionally re-routed to an alerting system.
 
+I also added an extra StatsD metric `errors` reported for each service checked, which indicates the number of internal errors (connection errors, certificate verification errors, etc.) that happened during processing the instances of a particular service. Monitoring alerts can be set up for it as well.
+
 ### How would you dockerize a test environment?
 
 As mentioned above, the solution does not come with a full-fledged test suite, and the final outcome would depend on the target environment (bare EC2? EKS? ECS/Lambda? etc.) and other requirements.
