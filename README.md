@@ -4,7 +4,7 @@
 
 The solution is implemented as a Python script for simplicity and the speed of development.
 
-Due to the requirement of the code being complete with necessary tests, the script is split into the module that can be used in tests, the tests proper, and the wrapper that executes an application instance from the module. In this configuration the solution is supposed to be used in production as a Docker image, but the app module consists of a single file and can be easily merged with the wrapper to be used as a standalone script if needs be.
+Due to the requirement of the code being complete with necessary tests, the script is split into the module that can be used in tests, the tests proper, and the wrapper that executes an application instance from the module. In this configuration the solution is supposed to be used in production as a Docker image, but the app module consists of a single file and can be easily merged with the wrapper to be used as a standalone script if needs be. The sample `Dockerfile` and the basic CI pipeline running tests, building the Docker image and pushing it to the registry are also provided.
 
 For simplicity and portability, the script only uses the standard library of Python. In a real life scenario various PyPI modules would have been used, for example Requests to send Slack Webhooks, some libraries for parsing configuration, structured JSON logging, StatsD communication and more advanced testing.
 
@@ -12,7 +12,7 @@ To run the script with the default configuration as per the task specification, 
 ```sh
 INSTANCES_FILE=./tests/integration/addrs.txt SERVICES='amazon.com:443=52.88.0.0/13,google.com:443=142.250.0.0/15' LOG_LEVEL=debug ./cert-checker
 ```
-or, in case of using a Docker image build:
+or, in the case of using a Docker image build:
 ```sh
 docker build . -t ghcr.io/sangwa/eco-tha:main
 docker run --rm -e INSTANCES_FILE=/app/addrs.txt -e SERVICES='amazon.com:443=52.88.0.0/13,google.com:443=142.250.0.0/15' -e LOG_LEVEL=debug -v "$(pwd)/tests/integration/addrs.txt:/app/addrs.txt:ro" ghcr.io/sangwa/eco-tha:main
@@ -32,7 +32,7 @@ For simplicity, no config-parsing library was used and all configurable settings
 
 The search path of the input file can be specified via the environment variable `INSTANCES_FILE` and defaults to `takehome_ip_addresses.txt` (as per the task specification) in the current working directory. A sample file with a few arbitrary addresses that satisfy the task specification is provided in the root of the repository.
 
-The file is not built into the Docker image at the moment, as the list of target instances is supposed to be more or less dynamic. Therefore if the Docker image is used the proper file should be mounted to the Docker image's working directory (`/app`), optionally with the proper path override specified.
+The file is not built into the Docker image at the moment, as the list of target instances is supposed to be more or less dynamic. Therefore if the Docker image is used the proper file should be mounted to the Docker image's working directory (`/app`), optionally with the proper path override specified, as shown in the example command lines above.
 
 #### Services
 
@@ -40,7 +40,7 @@ The information about services subject to the certificate checks is retrieved fr
 
 #### StatsD
 
-StatsD endpoint is retrieved from the `STATSD_ADDR` environment variable that is expected to have the format of `address:port`. If the port is omitted, the default port `8125` is used. The default value is to `10.10.4.14:8125` as per the task specification. Running the script with the default settings in a non-prepared environment will therefore cause an expected error of reporting the metrics generated during the execution of the script at the very end of the execution.
+StatsD endpoint is retrieved from the `STATSD_ADDR` environment variable that is expected to have the format of `address:port`. If the port is omitted, the default port `8125` is used. The default value is set to `10.10.4.14:8125` as per the task specification. Running the script with the default settings in a non-prepared environment will therefore cause an expected error of reporting the metrics generated during the execution of the script at the very end of the execution due to the bogus target address.
 
 #### Slack Webhook
 
@@ -50,13 +50,13 @@ For simplicity, since no specific requirements were outlined, I decided not to s
 
 #### Certificate Validation
 
-Since the task specification does not provide a clear description of the moment when a certificate can be considered `outdated` ("not re-issued"), but mentions the re-issue job runs weekly on Thursdays and the solution script can also be run on schedule, the default maximum age of the certificate is set to 1 week (**7 days**).
+Since the task specification does not provide a clear description of the moment when a certificate can be considered `outdated` ("not re-issued"), but mentions the re-issue job runs weekly on Thursdays and the solution script can also be run on schedule, the default maximum age of the certificate is currently set to 1 week (**7 days**).
 
 This value can be overridden via the `FRESHNESS_DAYS` environment variable. The expiration threshold can also be overridden via the `EXPIRATION_DAYS` variable (the default is **30 days** as per the task specification).
 
 All certificates are automatically validated against the certificate trust bundle of the host OS. At the moment this is non-configurable, but of course the script can be modified to support that, or alternatively the trust chain of the service certificates can be added to the trust bundle of the target host or the Docker image.
 
-Since the standard library of Python enforces SNI negotiation on TLS connections by default, it requires the SNI hostname to be set, and it is set automatically to the name of the service as specified in the configuration settings (e.g. `Callisto`). This may have implications, depending on how the target services are actually configured, and whether they support SNI. An incorrect certificate may be produced if a differnt SNI value is expected by the service. Another option could be using the target IP address instead, but I consider this less reliable as certificates of public services rarely contain fixed IP addresses in SANs and therefore less likely to be produced if not set as default. Anyways, since the task specification is not clear on this matter, this is the current choice of implementation. In a real life scenario some FQDNs are likely to be used, like public domains or Kubernetes service discovery domains, rather than arbitrary service names like provided in the task specification, and in case of Kubernetes the management of certificates would likely be automated and offloaded to some service mesh solution or something like `cert-manager` or Hashicorp Vault.
+Since the standard library of Python enforces SNI negotiation on TLS connections by default, it requires the SNI hostname to be set, and it is set automatically to the name of the service as specified in the configuration settings (e.g. `Callisto`). This may have implications, depending on how the target services are actually configured, and whether they support SNI. An incorrect certificate may be produced if a different SNI value is expected by the service. Another option could be using the target IP address instead, but I consider this less reliable as certificates of public services rarely contain fixed IP addresses in SANs and therefore less likely to be produced in response if not set as default. Anyways, since the task specification is not clear on this matter, this is the current choice of implementation. In a real life scenario some FQDNs are likely to be used, like public domains or Kubernetes service discovery domains, rather than arbitrary service names like provided in the task specification, and in the case of Kubernetes the management of certificates would likely be automated and offloaded to some service mesh solution or something like `cert-manager` or Hashicorp Vault.
 
 Considering the above, the code also performs the SAN validation by default, making sure the SNI domain is present in the certificate's SAN list (or the CN field). This setting is configurable by the boolean environment variable `CHECK_SAN`.
 
@@ -64,7 +64,7 @@ Considering the above, the code also performs the SAN validation by default, mak
 
 The task specification states that the solution should be a "production ready code complete with all necessary tests". However no specific acceptance criteria or expected coverage is mentioned.
 
-This solution provides a few very basic tests and the code is organized to be easily testable. Without the requirement of tests the basic functionality required could be implemented as a single page script in under one hour. On the other hand I don't really see the point to provide any extensive test coverage, since writing unit tests for every function and devising the end to end tests with necessary infrastructure would have probably taken two to three times more time than already spend on this solution, and honestly I don't think this is really in the scope. More details on testing are provided in the section on the Follow Up Questions below.
+This solution comes with a few very basic tests and the code is organized to be easily testable. Without the requirement of tests the basic functionality required could be implemented as a single page script in under one hour. On the other hand I don't really see the point to provide any extensive test coverage, since writing unit tests for every function and devising end to end tests with necessary infrastructure would have probably taken two to three times longer than already spend on this solution, and honestly I don't think this is really in the scope. More details on testing are provided in the section on the Follow Up Questions below.
 
 ## Follow Up Questions
 
@@ -72,7 +72,7 @@ This solution provides a few very basic tests and the code is organized to be ea
 
 The simplest way is to control the presence of metric datapoints sent to StatsD. If the script fails to run at some point and/or fails to report metrics to StatsD, the age of the last reported datapoints of the script's metrics will increase. An alert can be set for that or for the count of metric datapoints in the recent sliding window (like the last 36 hours).
 
-If the script is run as a Kubernetes (Cron)Job or some other containerized workload (e.g. in ECS or as a Lambda), respective metrics could also be collected and the alerts set on the occurrences of failed runs.
+If the script is run as a Kubernetes (Cron)Job or some other containerized workload (e.g. in ECS or as a Lambda), respective metrics could also be collected and alerts set on the occurrences of failed runs.
 
 Finally, if the script is executed as a cron job on an EC2 instance, error output from the script can be routed via the local mail subsystem to a public email list (e.g. a Google Group) that is monitored by responsible persons, or optionally re-routed to an alerting system.
 
@@ -92,7 +92,7 @@ The stack can be executed in a CI pipeline.
 
 ### How could you deploy this on an AWS EC2 instance using terraform?
 
-If the goal is to use a "bare" EC2 instance (like the jump host mentioned in the task specification), the proper way would be setting up EC2 instance metadata in the settings of the instance proper or its launch template/ASG. The metadata should contain a script that sets up a regular cron job (daily or weekly on Fridays or on Thursdays after the certificate re-issue job, depending on the configuration and requirements) as well as make sure the script is present on the machine. The latter can be done by pulling a Docker image from an ECR repository or copying it from an S3 bucket, where it is supposed to be placed by a CI pipeline in the both cases. (The IAM role of the EC2 instance should be also granted proper permissions to access ECR/S3 in this case.)
+If the goal is to use a "bare" EC2 instance (like the jump host mentioned in the task specification), the proper way would be setting up EC2 instance metadata in the settings of the instance proper or its launch template/ASG. The metadata should contain a script that sets up a regular cron job (daily or weekly on Fridays or on Thursdays after the certificate re-issue job, depending on the configuration and requirements) as well as make sure the script is present on the machine. The latter can be done by pulling a Docker image from an ECR repository or copying it from an S3 bucket, where it is supposed to be placed by a CI pipeline in the both cases. (The IAM role of the EC2 instance should be also granted proper permissions to access ECR/S3 in this case.) Pulling the script can also be set up as a cron job to ensure the latest released version is used.
 
 Terraform can also be used to set up necessary infrastructure to run this as an AWS-native job, e.g. an ECS task or a Lambda triggered by an EventBridge schedule rule.
 
